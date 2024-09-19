@@ -17,6 +17,8 @@ This project allows you to create and manage font groups with individual font it
 
 ## Installation
 
+First copy this project in to our htdocs or www folder of the local server. Then,
+
 ### 1. Composer Install 
 
 composer install 
