@@ -47,7 +47,25 @@
     </div>
   </section>
 
+  <section id="font-list" class="mt-5">
+    <div class="container">
+      <h4 class="mb-3">Our Fonts</h4>
+      <table class="table" id="fontsTable">
+        <thead>
+          <tr class="table-active">
+            <th scope="col">Font Name</th>
+            <th scope="col">Preview</th>
+            <th scope="col"></th>
+          </tr>
+        </thead>
+        <tbody id="fontsTableBody">
 
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/dropzone@5/dist/min/dropzone.min.js"></script>
   <script>
@@ -62,6 +80,8 @@
 
         this.on("success", function(file, response) {
           if (response.status) {
+            loadFonts();
+
             var alertDiv = document.getElementById('response-success-alert');
             alertDiv.innerHTML = 'Font file uploaded successfully!';
             alertDiv.style.display = 'block';
@@ -87,6 +107,87 @@
         });
       }
     };
+
+    function loadFonts() {
+      $.ajax({
+        url: 'submit.php',
+        method: 'GET',
+        dataType: 'json',
+        success: function(response) {
+          let fontsTableBody = $('#fontsTableBody');
+          let fontFaceCSS = '';
+          fontsTableBody.empty();
+
+          response.data.fonts.forEach(function(font) {
+            fontFaceCSS += `
+          @font-face {
+            font-family: '${font.font_name}';
+            src: url('${font.file_path}');
+          }
+        `;
+
+            fontsTableBody.append(`
+            <tr>
+              <td>${font.font_name}</td>
+              <td style="font-family: '${font.font_name}'; font-size: 18px;">
+                The quick brown fox jumps over the lazy dog.
+              </td>
+              <td><a href="#" class="text-decoration-none text-danger delete-font" data-id="${font.id}">DELETE</a></td>
+            </tr>
+            `);
+          });
+
+          $('head').append(`<style>${fontFaceCSS}</style>`);
+        },
+        error: function(error) {
+          var alertDiv = document.getElementById('response-danger-alert');
+          alertDiv.innerHTML = error.responseText;
+          alertDiv.style.display = 'block';
+        }
+      });
+    }
+
+    loadFonts();
+
+    $(document).on('click', '.delete-font', function(e) {
+      e.preventDefault();
+
+      let fontId = $(this).data('id');
+
+      $.ajax({
+        url: 'submit.php',
+        method: 'POST',
+        data: {
+          action: 'delete',
+          id: fontId,
+          status: 'deleteFont',
+        },
+        success: function(response) {
+          if (response.success) {
+            $(`a[data-id="${fontId}"]`).closest('tr').remove();
+
+            var alertDiv = document.getElementById('response-success-alert');
+            alertDiv.innerHTML = 'Font deleted successfully!';
+            alertDiv.style.display = 'block';
+
+            setTimeout(function() {
+              alertDiv.style.display = 'none';
+            }, 3000);
+          } else {
+            var alertDiv = document.getElementById('response-danger-alert');
+            alertDiv.innerHTML = response.message;
+            alertDiv.style.display = 'block';
+
+            setTimeout(function() {
+              alertDiv.style.display = 'none';
+            }, 3000);
+          }
+        },
+        error: function(error) {
+          console.error('Error during AJAX request:', error);
+        }
+      });
+    })
   </script>
 
 </body>
