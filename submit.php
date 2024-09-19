@@ -52,11 +52,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_POST['action'] === 'delete' && $_
   exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_POST['action'] === 'createFontGroup') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] === 'createFontGroup' || $_POST['action'] === 'editFontGroup')) {
 
   $title = $_POST['title'];
   $fontIds = $_POST['font_id'] ?? [];
   $fontTitles = $_POST['font_name'] ?? [];
+  $groupId = $_POST['font_group_id'] ?? null;
 
   if (empty($title)) {
     echo json_encode(['success' => false, 'message' => 'Title is required.']);
@@ -72,17 +73,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_POST['action'] === 'createFontGro
     echo json_encode(['success' => false, 'message' => 'Some fields may missing!']);
     exit;
   }
+  if ($_POST['action'] === 'createFontGroup') {
+    if ($database->createFontGroup($title, $fontIds, $fontTitles)) {
+      echo json_encode(['success' => true, 'message' => 'Font group created successfully!']);
+    }
+  } else {
+    if ($database->updateFontGroup($groupId, $title, $fontIds, $fontTitles)) {
+      echo json_encode(['success' => true, 'message' => 'Font group updated successfully!']);
+    }
+  }
 
-  if ($database->createFontGroup($title, $fontIds, $fontTitles)) {
-    echo json_encode(['success' => true, 'message' => 'Font group created successfully!']);
+
+  exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_POST['action'] === 'deleteGroup' && isset($_POST['group_id'])) {
+  $groupId = intval($_POST['group_id']);
+
+  if ($database->deleteFontGroup($groupId)) {
+    echo json_encode(['success' => true, 'message' => 'Successfully delete the group.']);
+  } else {
+    echo json_encode(['success' => false, 'message' => 'Failed to delete the group.']);
+  }
+
+  exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['group_id']) && $_GET['action'] === 'getGroup') {
+  $groupId = intval($_GET['group_id']);
+  $group = $database->getFontGroupById($groupId);
+  if ($group) {
+    echo json_encode(['success' => true, 'data' => $group]);
+  } else {
+    echo json_encode(['success' => false, 'message' => 'Group not found']);
   }
   exit;
 }
 
-
 $data = [];
 $fonts = $database->getAllFonts();
+$fontGroups = $database->fetchFontGroups();
 $data['fonts'] = $fonts;
+$data['fontGroups'] = $fontGroups;
 $response = ['success' => true, 'data' => $data];
 
 echo json_encode($response);

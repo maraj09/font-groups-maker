@@ -28,7 +28,7 @@
             <a class="nav-link" href="#create-font-group">Create Font Groups</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#">Font Groups List</a>
+            <a class="nav-link" href="#font-group-list">Font Groups List</a>
           </li>
         </ul>
       </div>
@@ -73,6 +73,7 @@
         <div class="alert alert-danger" style="display: none;" id="font-group-response-danger-alert" role="alert"></div>
       </div>
       <form action="" class="mt-3" id="create-font-group-form">
+        <input type="hidden" name="font_group_id" id="font_group_id" value="">
         <input type="text" name="title" class="form-control" placeholder="Group Title">
         <div id="fontGroupContainer">
           <div class="card my-2 font-group-item">
@@ -95,9 +96,27 @@
         </div>
         <div class="d-flex mt-3">
           <button type="button" class="btn btn-outline-primary add-row">+ Add Row</button>
-          <button type="submit" class="btn btn-success ms-auto">Create</button>
+          <button type="submit" class="btn btn-success ms-auto">Save</button>
         </div>
       </form>
+    </div>
+  </section>
+
+  <section id="font-group-list" class="my-5">
+    <div class="container">
+      <h4>Our Font Groups</h4>
+      <table class="table" id="fontGroupsTable">
+        <thead>
+          <tr class="table-active">
+            <th scope="col">NAME</th>
+            <th scope="col">FONTS</th>
+            <th scope="col">COUNT</th>
+            <th scope="col">ACTION</th>
+          </tr>
+        </thead>
+        <tbody id="fontGroupsTableBody">
+        </tbody>
+      </table>
     </div>
   </section>
 
@@ -116,7 +135,7 @@
 
         this.on("success", function(file, response) {
           if (response.status) {
-            loadFonts();
+            loadFontsAndFontGroups();
 
             var alertDiv = document.getElementById('response-success-alert');
             alertDiv.innerHTML = 'Font file uploaded successfully!';
@@ -166,7 +185,7 @@
         </div>
         `;
 
-    function loadFonts() {
+    function loadFontsAndFontGroups() {
       $.ajax({
         url: 'submit.php',
         method: 'GET',
@@ -205,6 +224,24 @@
           $('.font-group-select-font').each(function() {
             $(this).html(fontOptions);
           });
+
+          // For Font Groups 
+          let fontGroupsTableBody = $('#fontGroupsTableBody');
+          fontGroupsTableBody.empty();
+          response.data.fontGroups.forEach(function(group) {
+            let fontNames = group.fonts.join(', ');
+            fontGroupsTableBody.append(`
+                    <tr data-id="${group.id}">
+                      <td>${group.title}</td>
+                      <td>${fontNames}</td>
+                      <td>${group.font_count}</td>
+                      <td>
+                          <button class="btn btn-sm btn-primary edit-group" data-id="${group.id}">Edit</button>
+                          <button class="btn btn-sm btn-danger delete-group" data-id="${group.id}">Delete</button>
+                      </td>
+                    </tr>
+                `);
+          });
         },
         error: function(error) {
           var alertDiv = document.getElementById('response-danger-alert');
@@ -214,7 +251,7 @@
       });
     }
 
-    loadFonts();
+    loadFontsAndFontGroups();
 
     $(document).on('click', '.delete-font', function(e) {
       e.preventDefault();
@@ -232,7 +269,7 @@
         },
         success: function(response) {
           if (response.success) {
-            loadFonts();
+            loadFontsAndFontGroups();
 
             var alertDiv = document.getElementById('response-success-alert');
             alertDiv.innerHTML = 'Font deleted successfully!';
@@ -289,6 +326,8 @@
         }
       });
 
+      let action = $('#font_group_id').val() ? 'editFontGroup' : 'createFontGroup';
+
       $.ajax({
         url: 'submit.php',
         method: 'POST',
@@ -296,15 +335,14 @@
           title: title,
           font_id: fontIds,
           font_name: fontTitles,
-          action: 'createFontGroup',
+          font_group_id: $('#font_group_id').val(),
+          action: action,
         },
         success: function(response) {
           if (response.success) {
             $('input[name="title"]').val('');
             $('#fontGroupContainer').html(newCard);
-            $('.font-group-select-font').each(function() {
-              $(this).html(fontOptions);
-            });
+            loadFontsAndFontGroups();
             var alertDiv = document.getElementById('font-group-response-success-alert');
             alertDiv.innerHTML = response.message;
             alertDiv.style.display = 'block';
@@ -324,6 +362,102 @@
         },
         error: function(xhr, status, error) {
           console.error('AJAX Error:', status, error);
+        }
+      });
+    });
+
+    $(document).on('click', '.delete-group', function(e) {
+      e.preventDefault();
+
+      let groupId = $(this).data('id');
+
+      $.ajax({
+        url: 'submit.php',
+        method: 'POST',
+        data: {
+          action: 'deleteGroup',
+          group_id: groupId
+        },
+        success: function(response) {
+          if (response.success) {
+            $(`tr[data-id="${groupId}"]`).remove();
+            var alertDiv = document.getElementById('font-group-response-success-alert');
+            alertDiv.innerHTML = response.message;
+            alertDiv.style.display = 'block';
+
+            setTimeout(function() {
+              alertDiv.style.display = 'none';
+            }, 3000);
+          } else {
+            var alertDiv = document.getElementById('font-group-response-danger-alert');
+            alertDiv.innerHTML = response.message;
+            alertDiv.style.display = 'block';
+
+            setTimeout(function() {
+              alertDiv.style.display = 'none';
+            }, 3000);
+          }
+        },
+        error: function(error) {
+          console.error('Error during AJAX request:', error);
+          alert('An error occurred while deleting the group.');
+        }
+      });
+    });
+
+    $(document).on('click', '.edit-group', function() {
+      document.getElementById('create-font-group').scrollIntoView();
+      let groupId = $(this).data('id');
+      $.ajax({
+        url: 'submit.php',
+        method: 'GET',
+        data: {
+          action: 'getGroup',
+          group_id: groupId
+        },
+        success: function(response) {
+          if (response.success) {
+            $('#font_group_id').val(groupId);
+            $('input[name="title"]').val(response.data.title);
+
+            let fontGroupContainer = $('#fontGroupContainer');
+            fontGroupContainer.empty();
+
+            response.data.fonts.forEach(function(font) {
+              let newCard = `
+                        <div class="card my-2 font-group-item">
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col-5">
+                                        <input type="text" name="font_name[]" class="form-control font-name-input" value="${font.font_title}" placeholder="Font Name">
+                                    </div>
+                                    <div class="col-5">
+                                        <select class="form-select font-group-select-font" name="font_id[]">
+                                            ${fontOptions}
+                                        </select>
+                                    </div>
+                                    <div class="col-2 text-center">
+                                        <a href="javascript:void(0)" class="text-decoration-none text-danger remove-row">X</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+              fontGroupContainer.append(newCard);
+              $('#fontGroupContainer .font-group-select-font:last').val(font.font_id);
+            });
+          } else {
+            var alertDiv = document.getElementById('font-group-response-danger-alert');
+            alertDiv.innerHTML = response.message;
+            alertDiv.style.display = 'block';
+
+            setTimeout(function() {
+              alertDiv.style.display = 'none';
+            }, 3000);
+          }
+        },
+        error: function(error) {
+          console.error('Error fetching font group:', error);
         }
       });
     });
