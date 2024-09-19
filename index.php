@@ -25,7 +25,7 @@
             <a class="nav-link" href="#font-list">Font List</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#">Create Font Groups</a>
+            <a class="nav-link" href="#create-font-group">Create Font Groups</a>
           </li>
           <li class="nav-item">
             <a class="nav-link" href="#">Font Groups List</a>
@@ -59,9 +59,45 @@
           </tr>
         </thead>
         <tbody id="fontsTableBody">
-
         </tbody>
       </table>
+    </div>
+  </section>
+
+  <section id="create-font-group" class="mt-5">
+    <div class="container">
+      <h4>Create Font Group</h4>
+      <span>You have to select at least two fonts</span>
+      <div class="mt-3">
+        <div class="alert alert-success" style="display: none;" id="font-group-response-success-alert" role="alert"></div>
+        <div class="alert alert-danger" style="display: none;" id="font-group-response-danger-alert" role="alert"></div>
+      </div>
+      <form action="" class="mt-3" id="create-font-group-form">
+        <input type="text" name="title" class="form-control" placeholder="Group Title">
+        <div id="fontGroupContainer">
+          <div class="card my-2 font-group-item">
+            <div class="card-body">
+              <div class="row align-items-center">
+                <div class="col-5">
+                  <input type="text" name="font_name[]" class="form-control font-name-input" placeholder="Font Name">
+                </div>
+                <div class="col-5">
+                  <select class="form-select font-group-select-font" name="font_id[]">
+                    <option selected disabled>Select a font</option>
+                  </select>
+                </div>
+                <div class="col-2 text-center">
+                  <a href="javascript:void(0)" class="text-decoration-none text-danger remove-row">X</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="d-flex mt-3">
+          <button type="button" class="btn btn-outline-primary add-row">+ Add Row</button>
+          <button type="submit" class="btn btn-success ms-auto">Create</button>
+        </div>
+      </form>
     </div>
   </section>
 
@@ -108,6 +144,28 @@
       }
     };
 
+    let fontOptions = '<option selected disabled>Select a font</option>';
+
+    const newCard = `
+        <div class="card my-2 font-group-item">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-5">
+                        <input type="text" name="font_name[]" class="form-control font-name-input" placeholder="Font Name">
+                    </div>
+                    <div class="col-5">
+                        <select class="form-select font-group-select-font" name="font_id[]">
+                            <option selected disabled>Select a font</option>
+                        </select>
+                    </div>
+                    <div class="col-2 text-center">
+                        <a href="javascript:void(0)" class="text-decoration-none text-danger remove-row">X</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+
     function loadFonts() {
       $.ajax({
         url: 'submit.php',
@@ -116,6 +174,7 @@
         success: function(response) {
           let fontsTableBody = $('#fontsTableBody');
           let fontFaceCSS = '';
+          fontOptions = '<option selected disabled>Select a font</option>';
           fontsTableBody.empty();
 
           response.data.fonts.forEach(function(font) {
@@ -126,18 +185,26 @@
           }
         `;
 
+            fontOptions += `
+          <option value="${font.id}" data-font-name="${font.font_name}">${font.font_name}</option>
+        `;
+
             fontsTableBody.append(`
             <tr>
               <td>${font.font_name}</td>
               <td style="font-family: '${font.font_name}'; font-size: 18px;">
                 The quick brown fox jumps over the lazy dog.
               </td>
-              <td><a href="#" class="text-decoration-none text-danger delete-font" data-id="${font.id}">DELETE</a></td>
+              <td><a href="#" class="text-decoration-none text-danger delete-font" data-id="${font.id}" data-name="${font.font_name}">DELETE</a></td>
             </tr>
             `);
           });
 
           $('head').append(`<style>${fontFaceCSS}</style>`);
+
+          $('.font-group-select-font').each(function() {
+            $(this).html(fontOptions);
+          });
         },
         error: function(error) {
           var alertDiv = document.getElementById('response-danger-alert');
@@ -153,6 +220,7 @@
       e.preventDefault();
 
       let fontId = $(this).data('id');
+      let fontName = $(this).data('name');
 
       $.ajax({
         url: 'submit.php',
@@ -164,7 +232,7 @@
         },
         success: function(response) {
           if (response.success) {
-            $(`a[data-id="${fontId}"]`).closest('tr').remove();
+            loadFonts();
 
             var alertDiv = document.getElementById('response-success-alert');
             alertDiv.innerHTML = 'Font deleted successfully!';
@@ -188,6 +256,77 @@
         }
       });
     })
+
+    $('.add-row').on('click', function() {
+      const newCardElement = $(newCard).appendTo('#fontGroupContainer');
+      newCardElement.find('.font-group-select-font').html(fontOptions);
+    });
+
+    $(document).on('click', '.remove-row', function() {
+      if ($('.font-group-item').length > 1) {
+        $(this).closest('.font-group-item').remove();
+      }
+    });
+
+    $(document).on('change', '.font-group-select-font', function() {
+      let selectedFontName = $(this).find('option:selected').data('font-name');
+      $(this).closest('.row').find('.font-name-input').val(selectedFontName);
+    });
+
+    $('#create-font-group-form').on('submit', function(e) {
+      e.preventDefault();
+
+      const title = $('input[name="title"]').val();
+      const fontIds = [];
+      const fontTitles = [];
+
+      $('.font-group-item').each(function() {
+        const fontId = $(this).find('select.font-group-select-font').val();
+        const fontTitle = $(this).find('input.font-name-input').val();
+        if (fontId) {
+          fontIds.push(fontId);
+          fontTitles.push(fontTitle);
+        }
+      });
+
+      $.ajax({
+        url: 'submit.php',
+        method: 'POST',
+        data: {
+          title: title,
+          font_id: fontIds,
+          font_name: fontTitles,
+          action: 'createFontGroup',
+        },
+        success: function(response) {
+          if (response.success) {
+            $('input[name="title"]').val('');
+            $('#fontGroupContainer').html(newCard);
+            $('.font-group-select-font').each(function() {
+              $(this).html(fontOptions);
+            });
+            var alertDiv = document.getElementById('font-group-response-success-alert');
+            alertDiv.innerHTML = response.message;
+            alertDiv.style.display = 'block';
+
+            setTimeout(function() {
+              alertDiv.style.display = 'none';
+            }, 3000);
+          } else {
+            var alertDiv = document.getElementById('font-group-response-danger-alert');
+            alertDiv.innerHTML = response.message;
+            alertDiv.style.display = 'block';
+
+            setTimeout(function() {
+              alertDiv.style.display = 'none';
+            }, 3000);
+          }
+        },
+        error: function(xhr, status, error) {
+          console.error('AJAX Error:', status, error);
+        }
+      });
+    });
   </script>
 
 </body>

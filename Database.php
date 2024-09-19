@@ -44,4 +44,24 @@ class Database
         $query->execute();
         return $query->fetch(PDO::FETCH_ASSOC);
     }
+
+    public function createFontGroup($title, $fontIds, $fontTitles)
+    {
+        $query = $this->pdo->prepare("INSERT INTO font_groups (title) VALUES (:title)");
+        $query->execute(['title' => $title]);
+        $fontGroupId = $this->pdo->lastInsertId();
+
+        $query = $this->pdo->prepare("INSERT INTO font_groups_items (font_id, font_group_id, font_title) VALUES (:font_id, :font_group_id, :font_title)");
+
+        foreach ($fontIds as $index => $fontId) {
+            $fontTitle = $fontTitles[$index];
+            $query->execute([
+                'font_id' => $fontId,
+                'font_group_id' => $fontGroupId,
+                'font_title' => $fontTitle
+            ]);
+        }
+
+        return true;
+    }
 }

@@ -23,7 +23,7 @@ $response = ['success' => false];
 
 if (!empty($_FILES['fontFile'])) {
   $uploadResponse = $fontUploadService->handleFileUpload($_FILES['fontFile']);
-  $response = array_merge($response, $uploadResponse); // Add upload response to main response
+  $response = array_merge($response, $uploadResponse);
   echo json_encode($response);
   exit;
 }
@@ -48,6 +48,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_POST['action'] === 'delete' && $_
     } else {
       echo json_encode(['success' => false, 'message' => 'Font not found']);
     }
+  }
+  exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_POST['action'] === 'createFontGroup') {
+
+  $title = $_POST['title'];
+  $fontIds = $_POST['font_id'] ?? [];
+  $fontTitles = $_POST['font_name'] ?? [];
+
+  if (empty($title)) {
+    echo json_encode(['success' => false, 'message' => 'Title is required.']);
+    exit;
+  }
+
+  if (count($fontIds) < 2) {
+    echo json_encode(['success' => false, 'message' => 'You must select at least two fonts.']);
+    exit;
+  }
+
+  if (count($fontIds) !== count($fontTitles)) {
+    echo json_encode(['success' => false, 'message' => 'Some fields may missing!']);
+    exit;
+  }
+
+  if ($database->createFontGroup($title, $fontIds, $fontTitles)) {
+    echo json_encode(['success' => true, 'message' => 'Font group created successfully!']);
   }
   exit;
 }
