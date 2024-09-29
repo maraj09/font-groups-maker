@@ -342,6 +342,7 @@
           if (response.success) {
             $('input[name="title"]').val('');
             $('#fontGroupContainer').html(newCard);
+            $('#font_group_id').val('');
             loadFontsAndFontGroups();
             var alertDiv = document.getElementById('font-group-response-success-alert');
             alertDiv.innerHTML = response.message;
